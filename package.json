@@ -1,0 +1,23 @@
+{
+  "name": "learn-d3",
+  "version": "1.0.0",
+  "description": "",
+  "main": "chart.js",
+  "scripts": {
+    "start": "node app",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nemesis-sun/learn-d3.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/nemesis-sun/learn-d3/issues"
+  },
+  "homepage": "https://github.com/nemesis-sun/learn-d3#readme",
+  "dependencies": {
+    "express": "^4.13.4"
+  }
+}
