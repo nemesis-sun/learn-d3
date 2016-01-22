@@ -1,0 +1,25 @@
+.chart circle {
+    fill: steelblue;
+}
+
+.chart text {
+    fill: steelblue;
+    font-size: 10;
+}
+
+.draw {
+    padding-top: 10px;
+}
+
+.axis text {
+    font: 10px sans-serif;
+    fill: steelblue;
+}
+
+.axis path,
+.axis line {
+    fill: none;
+    stroke: steelblue;
+    stroke-width: 2;
+    shape-rendering: crispEdges;
+}
