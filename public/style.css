@@ -2,14 +2,14 @@
     fill: steelblue;
 }
 
-.chart text {
+.chart .trend-line-text{
     fill: steelblue;
     font-size: 10px;
 }
 
-.chart .trend-line:hover{
-    stroke-width: 4;
-}
+/*.chart .trend-line:hover{
+    stroke-width: 2;
+}*/
 
 .chart .trend-line {
     fill: none;
@@ -23,13 +23,18 @@
 
 .axis text {
     font: 10px sans-serif;
-    fill: steelblue;
+    fill: black;
 }
 
 .axis path,
 .axis line {
     fill: none;
-    stroke: steelblue;
-    stroke-width: 2;
+    stroke: black;
+    stroke-width: 1;
     shape-rendering: crispEdges;
+}
+
+.chart .y-axis-label {
+    fill: black;
+    font-size: 10px;
 }

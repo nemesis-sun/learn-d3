@@ -19,5 +19,8 @@
   "homepage": "https://github.com/nemesis-sun/learn-d3#readme",
   "dependencies": {
     "express": "^4.13.4"
+  },
+  "devDependencies": {
+    "numeral": "^1.5.3"
   }
 }
