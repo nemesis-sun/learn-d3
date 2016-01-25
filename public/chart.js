@@ -1,9 +1,5 @@
 
 
-var barWidth = 20;
-var countryCodes = [];
-var topCountries = 10;
-
 //this is the group containing the entire chart
 var chart = d3.selectAll(".chart").attr("width", "2000px").attr("height", "1000px").
 append("g").
@@ -11,7 +7,8 @@ attr("transform", "translate(150, 50)");
 
 //scaleY for scatter plot cy and y axis
 //the bigger the domain, the smaller the range as the higher point will have smaller cy value
-var scaleY = d3.scale.linear().range([500, 0]).domain([0, 450]);
+var scaleY = d3.scale.linear().range([500, 0]);
+var scaleYForBar = d3.scale.linear().range([500,0]);
 
 //scaleX for scatter plot cx and x axis
 var scaleXOrdinal = d3.scale.ordinal()
@@ -19,6 +16,16 @@ var scaleXOrdinal = d3.scale.ordinal()
     //rangePoints for scatter plot, rangeBands for bar chart
     //outerPadding(start and end) is 10%/2=5% of distance between 2 points
     .rangePoints([0, 900], 0.1);
+
+var yearRange = ["2010", "2011", "2012", "2013", "2014"];
+
+var scaleXBand = d3.scale.ordinal()
+    .domain(yearRange)
+    .rangeRoundBands([0,900], 0.1, 0.1);
+
+scaleXOrdinal = d3.scale.ordinal()
+    .domain(yearRange)
+    .rangeRoundPoints([0, 900], 1.2);
 
 function draw() {
 
@@ -29,11 +36,17 @@ function draw() {
     for(var i=0; i<checkBoxes.length; i++){
         checkedCountries.push(checkBoxes.eq(i).val());
     }
-    var countryCodes = checkedCountries.join(";");
-    console.log(countryCodes);
 
-    $.ajax("http://api.worldbank.org/countries/:countryCodes/indicators/NY.GDP.MKTP.CD?format=json&date=2010:2014".replace(":countryCodes", countryCodes)).done(processData);
+    drawGDPTrendLines(checkedCountries);
+    drawGDPGrowthBars(checkedCountries);
 
+}
+
+function drawGDPTrendLines(countryCodes){
+    var countryCodeString = countryCodes.join(";");
+    console.log(countryCodeString);
+
+    $.ajax("http://api.worldbank.org/countries/:countryCodes/indicators/NY.GDP.MKTP.CD?format=json&date=2010:2014".replace(":countryCodes", countryCodeString)).done(processData);
 }
 
 function processData(data){
@@ -189,7 +202,7 @@ function drawTrendLines(countries){
 
     var countryTrendLines = chart.selectAll(".individual-country-chart").data(countryTrendLineData, function(d){return d.id;});
 
-    console.log(countryTrendLines);
+    //console.log(countryTrendLines);
 
     countryTrendLines.selectAll(".trend-line").remove();
 
@@ -246,6 +259,32 @@ function drawAxises(minGDP, maxGDP){
             return numeral(d).format('($0a)');
         });
 
+    var xAxisForBar = d3.svg.axis()
+        .scale(scaleXBand)
+        .orient("bottom")
+        .outerTickSize(0);
+
+    var barLeftEdges = scaleXBand.range();
+    var barWidth = scaleXBand.rangeBand();
+    console.log(JSON.stringify(barLeftEdges));
+
+    var barRangeAxis = chart.append("g")
+        .attr("transform", "translate(0," + 600 + ")")
+        .attr("class", "axis");
+
+    barLeftEdges.forEach(function(x){
+        barRangeAxis.append("circle")
+            .attr("cx", x)
+            .attr("cy", 0)
+            .attr("r", 3);
+
+        barRangeAxis.append("circle")
+            .attr("cx", x+barWidth)
+            .attr("cy", 0)
+            .attr("r", 5);
+    });
+    
+
     //append x and y axises
     chart.append("g")
         .attr("transform", "translate(0," + 500 + ")") //need to move x-axis down by chart height
@@ -266,6 +305,98 @@ function drawAxises(minGDP, maxGDP){
         .attr("y", 10);
 }
 
+function drawGDPGrowthBars(countryCodes){
+    var countryCodeString = countryCodes.join(";");
+    console.log(countryCodeString);
+
+    $.ajax("http://api.worldbank.org/countries/:countryCodes/indicators/NY.GDP.PCAP.CD?format=json&date=2010:2014".replace(":countryCodes", countryCodeString)).done(processDataForBarChart);
+}
+
+function processDataForBarChart(data){
+
+    var countryBarData = [];
+    var countryIds = [];
+    var maxBarValue = 0, minBarValue = 0;
+
+    if(data instanceof Array && data.length >= 2){
+        data = data[1];
+        data.forEach(function(d){
+            var existingYear = countryBarData.filter(function(y){return y.year===d.date;});
+            var value = parseInt(d.value, 10);
+
+
+            if(existingYear.length>0){
+                existingYear[0].gdpPC.push({
+                    country: d.country.id,
+                    value: value
+                });
+            } else {
+                var year ={
+                    year: d.date,                    
+                    gdpPC: []
+                };
+                year.gdpPC.push({
+                    country: d.country.id,
+                    value: value
+                });
+                countryBarData.push(year);
+
+            }
+
+            if(countryIds.indexOf(d.country.id)<0)
+                countryIds.push(d.country.id);
+
+            if(value > maxBarValue)
+                maxBarValue = value;
+            if(value < minBarValue)
+                minBarValue = value;            
+        })
+    }
+    scaleYForBar.domain([minBarValue, maxBarValue]);
+    countryIds.sort(function(a, b){
+        return a>b;
+    });
+
+    console.log(JSON.stringify(countryIds));
+    //console.log(JSON.stringify(countryBarData));
+    drawBarCharts(countryBarData, countryIds);
+}
+
+function drawBarCharts(countryBarData, countryIds){
+
+    var barGroupWidth = scaleXBand.rangeBand();
+    var barGroupRange = d3.scale.ordinal().rangeRoundBands([0, barGroupWidth]).domain(countryIds);
+    var barWidth = barGroupRange.rangeBand();
+
+
+    var barCharts = chart.selectAll(".gdp-bar-group").data(countryBarData, function(d){return d.year;});
+
+    var newBarCharts = barCharts.enter().append("g")
+        .attr("class", "gdp-bar-group")
+        .attr("transform", function(d){
+            var barGroupLeftEdge = scaleXBand(d.year);
+            return "translate("+barGroupLeftEdge+",0)";
+        });
+
+    var newBars = newBarCharts.selectAll("rect").data(function(d){return d.gdpPC;}).enter();
+
+    newBars.append("rect")
+        .attr("y", function(d){
+            return scaleYForBar(d.value);
+        })
+        .attr("x", function(d){
+            return barGroupRange(d.country);
+        })
+        .attr("height", function(d){
+            return 500 - scaleYForBar(d.value);
+        })
+        .attr("width", barWidth)
+        .style("fill", "none")
+        .style("stroke", "steelblue");
+
+
+}
+
 $(".chart").on("mouseenter", ".trend-line", function(){
     console.log(".trend-line hover");
     $(this).parent().find(".trend-line-text").css("display", "");
@@ -275,62 +406,3 @@ $(".chart").on("mouseleave", ".trend-line", function(){
     console.log(".trend-line hover");
     $(this).parent().find(".trend-line-text").css("display", "none");
 });
-
-// function drawChart(){
-//     var join = chart.selectAll("circle").data(data);
-
-//     join.enter()
-//         .append("circle")
-//         .attr("cx", function(d, i) {
-//             return scaleXOrdinal(i + 1 + 2010 + "");
-//         })
-//         .attr("cy", function(d, i) {
-//             return scaleY(d);
-//         })
-//         .attr("r", 0)
-//         .transition().attr("r", 3);
-
-//     join.enter()
-//         .append("text")
-//         .attr("x", function(d, i) {
-//             return scaleXOrdinal(i + 1 + 2010 + "") - 5
-//         })
-//         .attr("y", function(d, i) {
-//             return scaleY(d) - 15;
-//         })
-//         .text(function(d) {
-//             return d
-//         });
-
-//     var lineData = [];
-
-//     var getLineD = d3.svg.line().
-//     x(function(d) {
-//         return d.x
-//     }).
-//     y(function(d) {
-//         return d.y
-//     }).
-//     interpolate("linear");
-
-//     for (var i = 0; i < data.length; i++) {
-//         lineData.push({
-//             x: scaleXOrdinal(i + 1 + 2010 + ""),
-//             y: scaleY(data[i])
-//         });
-//     }
-
-//     chart.select(".trend-line").remove();
-
-//     var path = chart.append("path")
-//         .attr("class", "trend-line")
-//         .attr("d", getLineD(lineData));
-
-//     var pathLength = path.node().getTotalLength();
-
-//     path.attr("stroke-dasharray", pathLength + " " + pathLength)
-//         .attr("stroke-dashoffset", pathLength)
-//         .transition().duration(2000)
-//         .ease("linear")
-//         .attr("stroke-dashoffset", 0);
-// }
