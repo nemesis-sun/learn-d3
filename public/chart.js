@@ -267,70 +267,11 @@ function drawAxises(minGDP, maxGDP){
 }
 
 $(".chart").on("mouseenter", ".trend-line", function(){
-    console.log(".trend-line hover");
+    //console.log(".trend-line hover");
     $(this).parent().find(".trend-line-text").css("display", "");
 });
 
 $(".chart").on("mouseleave", ".trend-line", function(){
-    console.log(".trend-line hover");
+    //console.log(".trend-line hover");
     $(this).parent().find(".trend-line-text").css("display", "none");
 });
-
-// function drawChart(){
-//     var join = chart.selectAll("circle").data(data);
-
-//     join.enter()
-//         .append("circle")
-//         .attr("cx", function(d, i) {
-//             return scaleXOrdinal(i + 1 + 2010 + "");
-//         })
-//         .attr("cy", function(d, i) {
-//             return scaleY(d);
-//         })
-//         .attr("r", 0)
-//         .transition().attr("r", 3);
-
-//     join.enter()
-//         .append("text")
-//         .attr("x", function(d, i) {
-//             return scaleXOrdinal(i + 1 + 2010 + "") - 5
-//         })
-//         .attr("y", function(d, i) {
-//             return scaleY(d) - 15;
-//         })
-//         .text(function(d) {
-//             return d
-//         });
-
-//     var lineData = [];
-
-//     var getLineD = d3.svg.line().
-//     x(function(d) {
-//         return d.x
-//     }).
-//     y(function(d) {
-//         return d.y
-//     }).
-//     interpolate("linear");
-
-//     for (var i = 0; i < data.length; i++) {
-//         lineData.push({
-//             x: scaleXOrdinal(i + 1 + 2010 + ""),
-//             y: scaleY(data[i])
-//         });
-//     }
-
-//     chart.select(".trend-line").remove();
-
-//     var path = chart.append("path")
-//         .attr("class", "trend-line")
-//         .attr("d", getLineD(lineData));
-
-//     var pathLength = path.node().getTotalLength();
-
-//     path.attr("stroke-dasharray", pathLength + " " + pathLength)
-//         .attr("stroke-dashoffset", pathLength)
-//         .transition().duration(2000)
-//         .ease("linear")
-//         .attr("stroke-dashoffset", 0);
-// }
