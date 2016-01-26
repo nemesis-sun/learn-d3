@@ -1,4 +1,5 @@
-.chart .trend-line-text{
+.chart .trend-line-text,
+.chart .gdp-pc-bar-label{
     fill: black;
     font-size: 10px;
 }
@@ -16,23 +17,20 @@
     padding-top: 10px;
 }
 
-.axis text, .bar-axis text {
+.axis text {
     font: 10px sans-serif;
     fill: black;
 }
 
 .axis path,
-.axis line,
-.bar-axis path,
-.bar-axis line {
+.axis line {
     fill: none;
     stroke: black;
     stroke-width: 1;
     shape-rendering: crispEdges;
 }
 
-.chart .y-axis-label,
-.chart .y-axis-bar-label {
+.chart .axis-label {
     fill: black;
     font-size: 10px;
 }

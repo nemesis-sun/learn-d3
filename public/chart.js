@@ -38,17 +38,18 @@ function draw() {
         checkedCountries.push(checkBoxes.eq(i).val().toUpperCase());
     }
     countryColorCodes.domain(checkedCountries);
+    var countryCodeString = checkedCountries.join(";");
 
-    drawGDPGrowthBars(checkedCountries);
-    drawGDPTrendLines(checkedCountries);
+    var reqs = {
+        gdp: $.ajax("http://api.worldbank.org/countries/:countryCodes/indicators/NY.GDP.MKTP.CD?format=json&date=2010:2014".replace(":countryCodes", countryCodeString)),
+        gdpPC: $.ajax("http://api.worldbank.org/countries/:countryCodes/indicators/NY.GDP.PCAP.CD?format=json&date=2010:2014".replace(":countryCodes", countryCodeString))
+    };
 
-}
-
-function drawGDPTrendLines(countryCodes){
-    var countryCodeString = countryCodes.join(";");
-    console.log(countryCodeString);
-
-    $.ajax("http://api.worldbank.org/countries/:countryCodes/indicators/NY.GDP.MKTP.CD?format=json&date=2010:2014".replace(":countryCodes", countryCodeString)).done(processData);
+    $.when(reqs.gdp, reqs.gdpPC).done(function(gdp, gdpPC){
+        processData(gdp[0]);
+        processDataForBarChart(gdpPC[0]);
+        drawHorizontalAxis(checkedCountries);
+    });
 }
 
 function processData(data){
@@ -93,10 +94,11 @@ function processData(data){
 
         console.log(JSON.stringify(countryGDP));
 
-
-        drawAxises(minGDP, maxGDP);
+        scaleY = scaleY.domain([minGDP, maxGDP]);
+        drawAxises();
         drawChartsForAllCountries(countryGDP);
     }
+
 }
 
 function drawChartsForAllCountries(countries){
@@ -237,17 +239,12 @@ function drawTrendLines(countries){
 
 }
 
-function drawAxises(minGDP, maxGDP){
+function drawAxises(){
 
-    chart.selectAll(".axis").remove();
-
-    scaleY = scaleY.domain([minGDP, maxGDP]);
+    chart.selectAll(".line-axis").remove();
 
     //generate x and y axises
-    var xAxis = d3.svg.axis()
-        .scale(scaleXOrdinal)
-        .orient("bottom")
-        .outerTickSize(0); //remove outer ticks as there are start and end outer paddings
+     //remove outer ticks as there are start and end outer paddings
 
     var yAxis = d3.svg.axis()
         .scale(scaleY)
@@ -256,38 +253,18 @@ function drawAxises(minGDP, maxGDP){
             return numeral(d).format('($0a)');
         });
 
-    var xAxisForBar = d3.svg.axis()
-        .scale(scaleXBand)
-        .orient("bottom")
-        .outerTickSize(0);
-
-
-
-    //append x and y axises
     chart.append("g")
-        .attr("transform", "translate(0," + 500 + ")") //need to move x-axis down by chart height
-        .attr("class", "axis")
-        .call(xAxisForBar);
-
-    chart.append("g")
-        .attr("class", "axis")
+        .attr("class", "line-axis axis")
         .call(yAxis);
 
 
-    chart.selectAll(".y-axis-label").remove();
+    chart.selectAll(".line-axis-label").remove();
     chart.append("text")
-        .attr("class", "y-axis-label")
+        .attr("class", "line-axis-label axis-label")
         .text("GDP")
         .attr("transform", "rotate(-90)")
         .attr("text-anchor", "end")
         .attr("y", 10);
-}
-
-function drawGDPGrowthBars(countryCodes){
-    var countryCodeString = countryCodes.join(";");
-    console.log(countryCodeString);
-
-    $.ajax("http://api.worldbank.org/countries/:countryCodes/indicators/NY.GDP.PCAP.CD?format=json&date=2010:2014".replace(":countryCodes", countryCodeString)).done(processDataForBarChart);
 }
 
 function processDataForBarChart(data){
@@ -356,9 +333,11 @@ function drawBarCharts(countryBarData, countryIds){
     var barChart = chart.select(".bar-chart");
 
     //join bar groups to data array by year
-    barChart.selectAll(".gdp-bar-group")
-        .data(countryBarData, function(d){return d.year;})
-        .enter() //for new group (new year array in data)
+    var barGroups = barChart.selectAll(".gdp-bar-group")
+        .data(countryBarData, function(d){return d.year;});
+
+
+    barGroups.enter() //for new group (new year array in data)
         .append("g")
         .attr("class", "gdp-bar-group") //create a group of bar for each year
         .attr("transform", function(d){
@@ -367,31 +346,63 @@ function drawBarCharts(countryBarData, countryIds){
         });
 
     //for all bar groups, remove all child bars
-    barChart.selectAll(".gdp-bar-group").selectAll("rect").remove();
+    barGroups.selectAll(".gdp-bar-container").remove();
 
     //map the bars in each bar group to its gdpPC array
-    barChart.selectAll(".gdp-bar-group").selectAll("rect").data(function(d){
+    var bars = barGroups.selectAll(".gdp-bar-container").data(function(d){
         return d.gdpPC;
-    }).enter()
-    .append("rect") //draw new bar for each country
-    .attr("y", function(d){
-        return scaleYForBar(d.value);
-    })
-    .attr("x", function(d){
-        return barGroupRange(d.country);
-    })
-    .attr("height", function(d){
-        return 500 - scaleYForBar(d.value);
-    })
-    .attr("width", barWidth)
-    .style("fill", function(d){
-        return countryColorCodes(d.country);
-    })
-    .style("stroke", "none");
+    });
+
+    bars.enter().append("g")
+        .attr("class", "gdp-bar-container")
+        .call(function(g){
+            g.append("rect") //draw new bar for each country
+                .attr("y", function(d){
+                    //return scaleYForBar(d.value);
+                    return 500;
+                })
+                .attr("x", function(d){
+                    return barGroupRange(d.country);
+                })
+                .attr("height", function(d){
+                    //return 500 - scaleYForBar(d.value);
+                    return 0;
+                })
+                .attr("width", barWidth)
+                .attr("class", "gdp-pc-bar")
+                .style("fill", function(d){
+                    return countryColorCodes(d.country);
+                })
+                .style("stroke", "none");
+        }).call(function(g){
+            g.append("text")
+                .text(function(d){
+                    return numeral(d.value).format("($0,0)");
+                })
+                .attr("y", function(d){
+                    return scaleYForBar(d.value)-5;
+                })
+                .attr("x", function(d){
+                    return barGroupRange(d.country) + barWidth/2;
+                })
+                .attr("text-anchor", "middle")
+                .attr("class", "gdp-pc-bar-label")
+                .style("display", "none");
+        });
+
+    bars.selectAll(".gdp-pc-bar")
+        .transition()
+        .ease("linear")
+        .attr("height", function(d){
+            return 500 - scaleYForBar(d.value);
+        })
+        .attr("y", function(d){
+            return scaleYForBar(d.value);
+        });
 
 }
 
-function drawBarAxis(min, max){
+function drawBarAxis(){
     console.log("drawBarAxis");
 
     chart.selectAll(".bar-axis").remove();
@@ -404,19 +415,34 @@ function drawBarAxis(min, max){
         });
 
     chart.append("g")
-        .attr("class", "bar-axis")
+        .attr("class", "bar-axis axis")
         .attr("transform", "translate("+ 900+", 0)")
         .call(yAxis);
 
-    chart.selectAll(".y-axis--bar-label").remove();
+    chart.selectAll(".bar-axis-label").remove();
     chart.append("text")
-        .attr("class", "y-axis-bar-label")
+        .attr("class", "bar-axis-label axis-label")
         .text("GDP per capita")
         .attr("transform", "rotate(90)")
         .attr("text-anchor", "start")
         .attr("y", -890)
         .attr("x", 0);
 
+}
+
+function drawHorizontalAxis(countries){
+
+    chart.selectAll(".x-axis").remove();
+
+    var xAxisForBar = d3.svg.axis()
+        .scale(scaleXBand)
+        .orient("bottom")
+        .outerTickSize(0);
+
+    chart.append("g")
+        .attr("transform", "translate(0," + 500 + ")") //need to move x-axis down by chart height
+        .attr("class", "x-axis axis")
+        .call(xAxisForBar);
 }
 
 $(".chart").on("mouseenter", ".trend-line", function(){
@@ -427,4 +453,14 @@ $(".chart").on("mouseenter", ".trend-line", function(){
 $(".chart").on("mouseleave", ".trend-line", function(){
     //console.log(".trend-line hover");
     $(this).parent().find(".trend-line-text").css("display", "none");
+});
+
+$(".chart").on("mouseenter", ".gdp-pc-bar", function(){
+    //console.log(".trend-line hover");
+    $(this).parent().find(".gdp-pc-bar-label").css("display", "");
+});
+
+$(".chart").on("mouseleave", ".gdp-pc-bar", function(){
+    //console.log(".trend-line hover");
+    $(this).parent().find(".gdp-pc-bar-label").css("display", "none");
 });
