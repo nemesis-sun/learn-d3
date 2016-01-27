@@ -153,6 +153,8 @@ function drawChartsForAllCountries(countries){
         .attr("r", 0)
         .transition().attr("r", 3);
 
+    individualCountryChart.selectAll("text").remove();
+
     var dataLabels = individualCountryChart.selectAll("text").data(function(d){ return d.gdp;});
 
     dataLabels.enter().append("text")
