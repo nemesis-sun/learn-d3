@@ -13,14 +13,14 @@ chart.append("g").attr("class", "line-chart");
 var scaleY = d3.scale.linear().range([500, 0]);
 var scaleYForBar = d3.scale.linear().range([500,0]);
 
+var yearRange = ["2011", "2012", "2013", "2014"];
 //scaleX for scatter plot cx and x axis
 var scaleXOrdinal = d3.scale.ordinal()
-    .domain(["2010", "2011", "2012", "2013", "2014"])
+    .domain(yearRange)
     //rangePoints for scatter plot, rangeBands for bar chart
     //outerPadding(start and end) is 10%/2=5% of distance between 2 points
     .rangeRoundPoints([0, 900], 1.2);
 
-var yearRange = ["2010", "2011", "2012", "2013", "2014"];
 
 var scaleXBand = d3.scale.ordinal()
     .domain(yearRange)
@@ -40,9 +40,24 @@ function draw() {
     countryColorCodes.domain(checkedCountries);
     var countryCodeString = checkedCountries.join(";");
 
+    var selectedStartYear = $("#start-year-select > option:selected").val();
+    console.log(selectedStartYear);
+
+    selectedStartYear = parseInt(selectedStartYear, 10);
+    var yearRangeString =selectedStartYear+":2014";
+    var yearRange = [];
+    while(selectedStartYear<=2014){
+        yearRange.push(selectedStartYear+"");
+        selectedStartYear++;
+    }
+
+    scaleXOrdinal.domain(yearRange);
+    scaleXBand.domain(yearRange);
+
+
     var reqs = {
-        gdp: $.ajax("http://api.worldbank.org/countries/:countryCodes/indicators/NY.GDP.MKTP.CD?format=json&date=2010:2014".replace(":countryCodes", countryCodeString)),
-        gdpPC: $.ajax("http://api.worldbank.org/countries/:countryCodes/indicators/NY.GDP.PCAP.CD?format=json&date=2010:2014".replace(":countryCodes", countryCodeString))
+        gdp: $.ajax("http://api.worldbank.org/countries/:countryCodes/indicators/NY.GDP.MKTP.CD?format=json&date=:yearRange&per_page=999".replace(":countryCodes", countryCodeString).replace(":yearRange", yearRangeString)),
+        gdpPC: $.ajax("http://api.worldbank.org/countries/:countryCodes/indicators/NY.GDP.PCAP.CD?format=json&date=:yearRange&per_page=999".replace(":countryCodes", countryCodeString).replace(":yearRange", yearRangeString))
     };
 
     $.when(reqs.gdp, reqs.gdpPC).done(function(gdp, gdpPC){
@@ -115,6 +130,7 @@ function drawChartsForAllCountries(countries){
         .append("g")
         .attr("class", "individual-country-chart"); //for each new country, create one 'g' element
 
+    individualCountryChart.selectAll("circle").remove();
 
     var dataPoints = individualCountryChart.selectAll("circle").data(function(d){ return d.gdp;});
 
@@ -336,14 +352,16 @@ function drawBarCharts(countryBarData, countryIds){
     var barGroups = barChart.selectAll(".gdp-bar-group")
         .data(countryBarData, function(d){return d.year;});
 
+    barGroups.exit().remove();
 
     barGroups.enter() //for new group (new year array in data)
         .append("g")
-        .attr("class", "gdp-bar-group") //create a group of bar for each year
-        .attr("transform", function(d){
-            var barGroupLeftEdge = scaleXBand(d.year);
-            return "translate("+barGroupLeftEdge+",0)"; //move the group to the correct x position
-        });
+        .attr("class", "gdp-bar-group"); //create a group of bar for each year
+
+    barGroups.attr("transform", function(d){
+        var barGroupLeftEdge = scaleXBand(d.year);
+        return "translate("+barGroupLeftEdge+",0)"; //move the group to the correct x position
+    });
 
     //for all bar groups, remove all child bars
     barGroups.selectAll(".gdp-bar-container").remove();
@@ -443,6 +461,34 @@ function drawHorizontalAxis(countries){
         .attr("transform", "translate(0," + 500 + ")") //need to move x-axis down by chart height
         .attr("class", "x-axis axis")
         .call(xAxisForBar);
+
+    chart.selectAll(".chart-legend-group").remove();
+
+
+
+    chart.append("g")
+        .attr("transform", "translate(200,540)")
+        .attr("class", "chart-legend-group")
+        .selectAll(".chart-legend").data(countries)
+        .enter()
+        .append("g").attr("class", "chart-legend")
+        .attr("transform", function(d, i){
+            var col = i%5;
+            var row = Math.floor(i/5);
+
+            return "translate("+(100*col)+","+(20*row)+")";
+        }).call(function(g){
+            g.append("text")
+                .text(function(d){return d;})
+                .attr("x", 25)
+                .attr("y", 10);
+
+            g.append("rect")
+                .style("fill", function(d){
+                    return countryColorCodes(d);
+                }).attr("width", 10)
+                .attr("height", 10);
+        });
 }
 
 $(".chart").on("mouseenter", ".trend-line", function(){
